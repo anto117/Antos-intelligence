@@ -30,6 +30,8 @@ export interface WandModeOptions {
   pins: WandPin[];
   /** Whether wand mode is on */
   enabled: boolean;
+  /** Which camera is active — flips X coords to match mirrored video */
+  facingMode?: "user" | "environment";
 }
 
 export interface WandModeState {
@@ -58,6 +60,7 @@ export function useWandMode({
   viewportHeight,
   pins,
   enabled,
+  facingMode = "environment",
 }: WandModeOptions): WandModeState {
   const [ready, setReady] = useState(false);
   const [wands, setWands] = useState<Wand[]>([]);
@@ -81,10 +84,12 @@ export function useWandMode({
 
   const wRef = useRef(viewportWidth);
   const hRef = useRef(viewportHeight);
+  const facingModeRef = useRef<"user" | "environment">(facingMode);
   useEffect(() => {
     wRef.current = viewportWidth;
     hRef.current = viewportHeight;
-  }, [viewportWidth, viewportHeight]);
+    facingModeRef.current = facingMode;
+  }, [viewportWidth, viewportHeight, facingMode]);
 
   // ── Load MediaPipe Hands from CDN once ─────────────────────────────────────
   useEffect(() => {
@@ -138,11 +143,17 @@ export function useWandMode({
             const wrist = lm[0];
             const mcp = lm[9];
 
-            // MediaPipe uses normalised [0,1] coords
-            const wristX = wrist.x * wRef.current;
-            const wristY = wrist.y * hRef.current;
-            const mcpX = mcp.x * wRef.current;
-            const mcpY = mcp.y * hRef.current;
+            // MediaPipe uses normalised [0,1] coords.
+            // When using the front (selfie) camera, the video is CSS-mirrored
+            // with scaleX(-1), so we must flip X to match the visual display.
+            const flipX = facingModeRef.current === "user";
+            const rawWristX = flipX ? (1 - wrist.x) : wrist.x;
+            const rawMcpX   = flipX ? (1 - mcp.x)   : mcp.x;
+
+            const wristX = rawWristX * wRef.current;
+            const wristY = wrist.y   * hRef.current;
+            const mcpX   = rawMcpX   * wRef.current;
+            const mcpY   = mcp.y     * hRef.current;
 
             // Angle points from wrist to knuckles (hand direction)
             const angle = Math.atan2(mcpY - wristY, mcpX - wristX);

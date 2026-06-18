@@ -284,6 +284,7 @@ export default function CameraPage() {
     viewportHeight: viewportSize.h,
     pins: wandPins,
     enabled: wandEnabled && cameraActive,
+    facingMode,
   });
 
   const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
