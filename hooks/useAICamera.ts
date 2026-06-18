@@ -32,12 +32,14 @@ export function useAICamera({
   quality = 0.55,
   forceDemo = false,
   selectedMode = "idle",
+  initialFacingMode = "environment",
 }: {
   wsUrl: string;
   captureInterval?: number;
   quality?: number;
   forceDemo?: boolean;
   selectedMode?: DetectionMode;
+  initialFacingMode?: "user" | "environment";
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -56,6 +58,8 @@ export function useAICamera({
   const [wsConnected, setWsConnected] = useState(false);
   const [frameCount, setFrameCount] = useState(0);
   const [scanProgress, setScanProgress] = useState(0);
+  const [facingMode, setFacingMode] = useState<"user" | "environment">(initialFacingMode);
+  const facingModeRef = useRef<"user" | "environment">(initialFacingMode);
 
   // ── WebSocket (backend) ─────────────────────────────────────
   const connectWs = useCallback(() => {
@@ -156,11 +160,18 @@ export function useAICamera({
   }, [quality, selectedMode, forceDemo]);
 
   // ── Start camera ────────────────────────────────────────────
-  const startCamera = useCallback(async () => {
+  const startCamera = useCallback(async (overrideFacing?: "user" | "environment") => {
     setError(null);
+    // Stop any existing stream first
+    if (captureTimer.current) { clearInterval(captureTimer.current); captureTimer.current = null; }
+    streamRef.current?.getTracks().forEach(t => t.stop());
+    streamRef.current = null;
+    if (videoRef.current) videoRef.current.srcObject = null;
+
+    const facing = overrideFacing ?? facingModeRef.current;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "environment" },
+        video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: facing },
         audio: false,
       });
       streamRef.current = stream;
@@ -187,6 +198,16 @@ export function useAICamera({
       }
     }
   }, [connectWs, captureAndSend, captureInterval]);
+
+  // ── Flip camera (front ↔ back) ───────────────────────────────
+  const flipCamera = useCallback(async () => {
+    const next: "user" | "environment" = facingModeRef.current === "environment" ? "user" : "environment";
+    facingModeRef.current = next;
+    setFacingMode(next);
+    if (cameraActive) {
+      await startCamera(next);
+    }
+  }, [cameraActive, startCamera]);
 
   // ── Stop camera ─────────────────────────────────────────────
   const stopCamera = useCallback(() => {
@@ -222,7 +243,7 @@ export function useAICamera({
 
   useEffect(() => () => { stopCamera(); }, [stopCamera]);
 
-  return { videoRef, canvasRef, cameraActive, paused, analyzing, mode, result, error, wsConnected, frameCount, scanProgress, startCamera, stopCamera, togglePause };
+  return { videoRef, canvasRef, cameraActive, paused, analyzing, mode, result, error, wsConnected, frameCount, scanProgress, facingMode, startCamera, stopCamera, togglePause, flipCamera };
 }
 
 // Keep getMockResult for upload fallback

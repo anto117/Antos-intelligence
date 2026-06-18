@@ -12,22 +12,104 @@ const GEMINI_API_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY ?? "";
 
 // Clean prompt without JS-style comments (smaller models get confused by them)
 function getPromptForMode(forcedMode?: DetectionMode): string {
-  let focusInstruction = "";
   if (forcedMode === "food") {
-    focusInstruction = `\nCRITICAL: The user has selected FOOD MODE. Prioritize detecting food, beverage, snack, packaging, or ingredients in the frame. If the user is holding an item (e.g., a bottle of cola, snacks, fruit), focus on analyzing that item and return it as the primary detection with nutritional details.`;
-  } else if (forcedMode === "emotion") {
-    focusInstruction = `\nCRITICAL: The user has selected EMOTION MODE. Prioritize detecting human faces and performing detailed facial expression and emotion analysis.`;
-  } else if (forcedMode === "room") {
-    focusInstruction = `\nCRITICAL: The user has selected ROOM MODE. Prioritize analyzing the room's interior design, furniture layout, lighting quality, and clutter.`;
+    return `You are a professional nutritionist AI with expert vision. Carefully analyze this image.
+
+CRITICAL RULES:
+1. READ ALL VISIBLE TEXT on any packaging, labels, wrappers, or containers FIRST.
+2. If you can read a brand name or product name (e.g. "Dukes Waffy Choco Roll", "Lay's", "KitKat"), use that EXACT name — do NOT guess generically.
+3. If it is a packaged/manufactured product, identify it precisely by its visible brand and product name.
+4. Provide nutritional info per serving based on the actual product. For packaged products, use standard serving size data.
+5. NEVER label a packaged snack/biscuit/wafer as "Salad Bowl" or any unrelated food. Identify what you actually see.
+
+Respond with ONLY this JSON, no other text:
+{
+  "detections": [
+    {
+      "category": "food",
+      "name": "Exact product name as seen on label, or specific food name",
+      "confidence": 92,
+      "box": [100, 50, 900, 950],
+      "details": {
+        "calories": "320 kcal per serving",
+        "protein": "3g",
+        "carbohydrates": "42g",
+        "fat": "16g",
+        "fiber": "1g",
+        "sugar": "18g",
+        "health_score": 3.5
+      },
+      "suggestions": [
+        "This is a processed snack — enjoy in moderation",
+        "High in refined carbohydrates and sugar",
+        "Pair with a protein source for balance",
+        "Check the pack for exact serving size"
+      ]
+    }
+  ]
+}
+
+Box values are 0–1000 (top-left=0, bottom-right=1000). Respond ONLY with valid JSON.`;
   }
 
-  return `You are an expert AI vision system. Analyze this camera frame and identify ALL prominent items from these categories:
-1. "food" - any food, beverage, snack, ingredient
-2. "face" - human faces with emotion analysis
-3. "room" - interior furniture, workspace elements, decoration
-${focusInstruction}
+  if (forcedMode === "emotion") {
+    return `You are an expert facial expression and emotion analysis AI. Analyze the face(s) in this image.
 
-Respond with ONLY this JSON structure, no other text:
+Respond with ONLY this JSON, no other text:
+{
+  "detections": [
+    {
+      "category": "face",
+      "name": "Human Face",
+      "confidence": 90,
+      "box": [200, 150, 800, 850],
+      "details": {
+        "dominant_emotion": "Happy",
+        "happy": "72%",
+        "neutral": "18%",
+        "focused": "6%",
+        "eye_contact": "84%",
+        "confidence_score": 8.2
+      },
+      "suggestions": ["tip1", "tip2", "tip3"]
+    }
+  ]
+}
+Box values 0–1000. Respond ONLY with valid JSON.`;
+  }
+
+  if (forcedMode === "room") {
+    return `You are an expert interior design AI. Analyze this room image carefully.
+
+Respond with ONLY this JSON, no other text:
+{
+  "detections": [
+    {
+      "category": "room",
+      "name": "Room Type",
+      "confidence": 88,
+      "box": [0, 0, 1000, 1000],
+      "details": {
+        "style": "Modern Minimalist",
+        "lighting": "Natural + Warm",
+        "space_usage": "65% utilized",
+        "clutter": "Low",
+        "design_score": 7.5
+      },
+      "suggestions": ["tip1", "tip2", "tip3", "tip4"]
+    }
+  ]
+}
+Box values 0–1000. Respond ONLY with valid JSON.`;
+  }
+
+  // Generic / auto-detect
+  return `You are an expert AI vision system. Analyze this camera frame and identify ALL prominent items.
+Categories: "food" (any food/drink/snack/packaged product), "face" (human faces), "room" (interior/furniture).
+
+IMPORTANT: If you see packaged food with a visible brand name or label, read and use that EXACT name.
+
+Respond with ONLY this JSON:
 {
   "detections": [
     {
@@ -48,12 +130,11 @@ Respond with ONLY this JSON structure, no other text:
     }
   ]
 }
-
-For face detections use details: dominant_emotion, happy, neutral, focused, eye_contact, confidence_score
-For room detections use details: style, lighting, space_usage, clutter, design_score
-Box values are normalized 0-1000 (0=top-left corner, 1000=bottom-right corner).
-Respond with ONLY valid JSON.`;
+For face: details = { dominant_emotion, happy, neutral, focused, eye_contact, confidence_score }
+For room: details = { style, lighting, space_usage, clutter, design_score }
+Box values 0–1000. Respond ONLY with valid JSON.`;
 }
+
 
 export async function analyzeFrameWithGemini(base64Jpeg: string, forcedMode?: DetectionMode): Promise<AnalysisResult | null> {
   const promptText = getPromptForMode(forcedMode);

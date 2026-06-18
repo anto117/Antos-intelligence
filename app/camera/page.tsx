@@ -2,7 +2,7 @@
 
 import { useRef, useState, useCallback, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Camera, Upload, Pause, Play, X, Wifi, WifiOff, Download, Flame, Zap, Wand2 } from "lucide-react";
+import { Camera, Upload, Pause, Play, X, Wifi, WifiOff, Download, Flame, Zap, Wand2, RotateCcw } from "lucide-react";
 import Link from "next/link";
 import { useAICamera, type DetectionMode, type AnalysisResult } from "@/hooks/useAICamera";
 import { useRoomMakeover } from "@/hooks/useRoomMakeover";
@@ -179,7 +179,7 @@ export default function CameraPage() {
   const [autoStartRoom, setAutoStartRoom] = useState(false);
   const [viewportSize, setViewportSize] = useState({ w: 0, h: 0 });
   const [selectedMode, setSelectedMode] = useState<DetectionMode>("idle");
-  const { videoRef, canvasRef, cameraActive, paused, analyzing, mode, result, error, wsConnected, frameCount, scanProgress, startCamera, stopCamera, togglePause } = useAICamera({ wsUrl: WS_URL, captureInterval: 7000, quality: 0.78, forceDemo: demoMode, selectedMode });
+  const { videoRef, canvasRef, cameraActive, paused, analyzing, mode, result, error, wsConnected, frameCount, scanProgress, facingMode, startCamera, stopCamera, togglePause, flipCamera } = useAICamera({ wsUrl: WS_URL, captureInterval: 7000, quality: 0.78, forceDemo: demoMode, selectedMode });
 
   // Makeover hook
   const makeover = useRoomMakeover(
@@ -362,59 +362,77 @@ export default function CameraPage() {
       </header>
 
       {/* ── Controls bar ───────────────────────────────────────── */}
-      <div className="flex-shrink-0 flex items-center gap-3 px-6 py-3 border-b border-slate-200 bg-white flex-wrap shadow-sm">
-        <button id="start-camera-btn" onClick={cameraActive ? stopCamera : startCamera}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-sm ${cameraActive
+      <div className="flex-shrink-0 flex items-center gap-2 px-3 sm:px-6 py-2.5 border-b border-slate-200 bg-white shadow-sm overflow-x-auto">
+        {/* Start / Stop */}
+        <button id="start-camera-btn" onClick={cameraActive ? stopCamera : () => startCamera()}
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all shadow-sm shrink-0 ${cameraActive
             ? "bg-red-50 text-red-600 border border-red-200 hover:bg-red-100/50"
             : "bg-[#0070F3] hover:bg-[#0051B3] text-white"}`}>
-          {cameraActive ? <><X className="w-4 h-4" />Stop Camera</> : <><Camera className="w-4 h-4" />Start Camera</>}
-        </button>
-        <button onClick={() => fileInputRef.current?.click()}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-slate-50 text-slate-700 border border-slate-200 hover:bg-slate-100 transition-all shadow-sm">
-          <Upload className="w-4 h-4" />Upload Image
-        </button>
-        {cameraActive && (
-          <button onClick={togglePause}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-slate-50 text-slate-700 border border-slate-200 hover:bg-slate-100 transition-all shadow-sm">
-            {paused ? <><Play className="w-4 h-4" />Resume</> : <><Pause className="w-4 h-4" />Pause</>}
-          </button>
-        )}
-        {uploadedImage && !cameraActive && (
-          <button onClick={() => { setUploadedImage(null); setUploadResult(null); setUploadMode("idle"); }}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-red-50 text-red-600 border border-red-200 hover:bg-red-100/50 transition-all shadow-sm">
-            <X className="w-4 h-4" />Clear Image
-          </button>
-        )}
-        <button onClick={() => setDemoMode(p => !p)}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-sm ${demoMode
-            ? "bg-amber-50 text-amber-600 border border-amber-200 hover:bg-amber-100/50 animate-pulse"
-            : "bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100"}`}>
-          <Zap className="w-4 h-4" />{demoMode ? "Demo Mode ON" : "Demo Mode"}
+          {cameraActive ? <><X className="w-4 h-4" /><span className="hidden sm:inline">Stop</span></> : <><Camera className="w-4 h-4" /><span className="hidden sm:inline">Start</span></>}
         </button>
 
-        {/* ── 🪄 Wand Mode Toggle ──────────────────────────────── */}
+        {/* Upload */}
+        <button onClick={() => fileInputRef.current?.click()}
+          title="Upload Image"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold bg-slate-50 text-slate-700 border border-slate-200 hover:bg-slate-100 transition-all shadow-sm shrink-0">
+          <Upload className="w-4 h-4" /><span className="hidden sm:inline">Upload</span>
+        </button>
+
+        {/* Pause/Resume — only when camera is active */}
+        {cameraActive && (
+          <button onClick={togglePause} title={paused ? "Resume" : "Pause"}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold bg-slate-50 text-slate-700 border border-slate-200 hover:bg-slate-100 transition-all shadow-sm shrink-0">
+            {paused ? <><Play className="w-4 h-4" /><span className="hidden sm:inline">Resume</span></> : <><Pause className="w-4 h-4" /><span className="hidden sm:inline">Pause</span></>}
+          </button>
+        )}
+
+        {/* Clear — only when image is uploaded */}
+        {uploadedImage && !cameraActive && (
+          <button onClick={() => { setUploadedImage(null); setUploadResult(null); setUploadMode("idle"); }}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-red-50 text-red-600 border border-red-200 hover:bg-red-100/50 transition-all shadow-sm shrink-0">
+            <X className="w-4 h-4" /><span className="hidden sm:inline">Clear</span>
+          </button>
+        )}
+
+        {/* Divider */}
+        <div className="w-px h-6 bg-slate-200 mx-1 shrink-0 hidden sm:block" />
+
+        {/* Flip Camera */}
+        {cameraActive && (
+          <button
+            onClick={flipCamera}
+            title={facingMode === "environment" ? "Switch to Front Camera" : "Switch to Back Camera"}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold bg-slate-50 text-slate-700 border border-slate-200 hover:bg-blue-50 hover:text-[#0070F3] hover:border-blue-200 transition-all shadow-sm shrink-0"
+          >
+            <RotateCcw className="w-4 h-4" />
+            <span className="hidden sm:inline">
+              {facingMode === "environment" ? "Front Cam" : "Back Cam"}
+            </span>
+          </button>
+        )}
+
+        {/* Wand Mode */}
         <button
           id="wand-mode-btn"
           onClick={() => setWandEnabled(p => !p)}
-          title={wandEnabled ? "Wand Mode ON — hold your hand up!" : "Activate Wand Mode"}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all border shadow-sm ${
+          title={wandEnabled ? "Wand Mode ON" : "Wand Mode"}
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all border shadow-sm shrink-0 ${
             wandEnabled
               ? "bg-violet-50 text-violet-600 border-violet-200 animate-pulse"
               : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
           }`}
         >
-          <span style={{ fontSize: 14 }}>🪄</span>
-          {wandEnabled
-            ? wandReady ? "Wand Mode ON" : "Loading…"
-            : "Wand Mode"}
+          <Wand2 className="w-4 h-4" />
+          <span className="hidden sm:inline">{wandEnabled ? (wandReady ? "Wand ON" : "Loading…") : "Wand"}</span>
         </button>
 
-        {/* ── AR Makeover Button ──────────────────────────────────── */}
+        {/* AR Makeover */}
         <button
           id="ar-makeover-btn"
           onClick={makeover.isDone ? makeover.reset : handleMakeover}
           disabled={!cameraActive || makeover.isAnalyzing}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all border shadow-sm ${
+          title={makeover.isDone ? "Exit Makeover" : "Analyze & Redesign"}
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all border shadow-sm shrink-0 ${
             makeover.isDone
               ? "bg-purple-50 text-purple-600 border-purple-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
               : makeover.isAnalyzing
@@ -424,20 +442,31 @@ export default function CameraPage() {
               : "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-60"
           }`}
         >
-          <Wand2 className="w-4 h-4" />
-          {makeover.isAnalyzing
-            ? "Redesigning…"
-            : makeover.isDone
-            ? "Exit Makeover"
-            : "Analyze & Redesign"}
+          <Zap className="w-4 h-4" />
+          <span className="hidden sm:inline">
+            {makeover.isAnalyzing ? "Redesigning…" : makeover.isDone ? "Exit" : "Redesign"}
+          </span>
         </button>
 
+        {/* Demo Mode */}
+        <button onClick={() => setDemoMode(p => !p)}
+          title={demoMode ? "Demo Mode ON" : "Demo Mode"}
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all shadow-sm shrink-0 ml-auto ${demoMode
+            ? "bg-amber-50 text-amber-600 border border-amber-200 animate-pulse"
+            : "bg-slate-50 text-slate-500 border border-slate-200 hover:bg-slate-100"}`}>
+          <span className="text-sm">⚡</span>
+          <span className="hidden sm:inline">{demoMode ? "Demo ON" : "Demo"}</span>
+        </button>
+
+        {/* Export */}
         {activeResult && (
-          <button onClick={handleExport}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-slate-50 text-slate-700 border border-slate-200 hover:bg-slate-100 transition-all shadow-sm sm:ml-auto">
-            <Download className="w-4 h-4" />Export JSON
+          <button onClick={handleExport} title="Export JSON"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-slate-50 text-slate-700 border border-slate-200 hover:bg-slate-100 transition-all shadow-sm shrink-0">
+            <Download className="w-4 h-4" />
+            <span className="hidden sm:inline">Export</span>
           </button>
         )}
+
       </div>
 
       {/* ── Main viewport ──────────────────────────────────────── */}
@@ -448,7 +477,10 @@ export default function CameraPage() {
           ref={videoRef}
           autoPlay muted playsInline
           className="absolute inset-0 w-full h-full object-cover transition-opacity duration-500"
-          style={{ opacity: cameraActive ? 1 : 0 }}
+          style={{
+            opacity: cameraActive ? 1 : 0,
+            transform: facingMode === "user" ? "scaleX(-1)" : "none",
+          }}
         />
 
         {/* Uploaded image */}
@@ -469,7 +501,7 @@ export default function CameraPage() {
               <p className="text-slate-500 text-xs sm:text-sm font-light">Also supports interior layout design & emotion metrics</p>
             </div>
             <div className="flex gap-3 mt-2">
-              <button onClick={startCamera}
+              <button onClick={() => startCamera()}
                 className="flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold bg-[#0070F3] hover:bg-[#0051B3] text-white shadow-md transition-all">
                 <Camera className="w-4 h-4" />Start Camera
               </button>
@@ -699,7 +731,7 @@ export default function CameraPage() {
                 <button onClick={() => { setDemoMode(true); startCamera(); }} className="px-3 py-1.5 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 text-xs font-bold hover:bg-amber-100 transition-all">
                   Use Demo Mode
                 </button>
-                <button onClick={startCamera} className="px-3 py-1.5 rounded-lg bg-red-100 text-red-700 text-xs font-bold hover:bg-red-200 transition-all">
+                <button onClick={() => startCamera()} className="px-3 py-1.5 rounded-lg bg-red-100 text-red-700 text-xs font-bold hover:bg-red-200 transition-all">
                   Retry
                 </button>
               </div>
