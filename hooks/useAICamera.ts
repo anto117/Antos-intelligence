@@ -151,10 +151,24 @@ export function useAICamera({
       return;
     }
 
-    // Priority 3: direct local AI (in case geminiVision import itself fails)
-    const { analyzeWithLocalAI } = await import("@/lib/localVisionAI");
-    const localResult = await analyzeWithLocalAI(base64, selectedMode);
-    applyResult(localResult);
+    // Priority 3: Connection failure info (YOLOv8 trained model is offline)
+    setAnalyzing(false);
+    setError("Trained model backend is offline");
+    applyResult({
+      mode: selectedMode,
+      confidence: 0,
+      detected: "Trained Model Offline",
+      data: {
+        "Status": "Connection Failed",
+        "Required": "Start python backend: python -m uvicorn main:app --host 0.0.0.0 --port 8000",
+      },
+      suggestions: [
+        "Start the Python backend service locally on port 8000.",
+        "Alternatively, set NEXT_PUBLIC_GEMINI_API_KEY in Vercel settings to use the cloud model.",
+        "Ensure your mobile device is on the same local network.",
+        "Check that port 8000 is open on your computer."
+      ]
+    });
     frameRef.current += 1;
     setFrameCount(frameRef.current);
   }, [quality, selectedMode, forceDemo]);
@@ -175,6 +189,34 @@ export function useAICamera({
         audio: false,
       });
       streamRef.current = stream;
+      
+      // Dynamically detect actual camera facing mode from track settings or label (e.g., laptops/webcams)
+      const track = stream.getVideoTracks()[0];
+      if (track) {
+        let actualFacing = track.getSettings().facingMode as "user" | "environment" | undefined;
+        if (!actualFacing && track.label) {
+          const lbl = track.label.toLowerCase();
+          if (
+            lbl.includes("front") ||
+            lbl.includes("user") ||
+            lbl.includes("selfie") ||
+            lbl.includes("webcam") ||
+            lbl.includes("integrated") ||
+            lbl.includes("facetime") ||
+            lbl.includes("brio") ||
+            lbl.includes("c920")
+          ) {
+            actualFacing = "user";
+          } else {
+            actualFacing = "environment";
+          }
+        }
+        if (actualFacing && actualFacing !== facingModeRef.current) {
+          facingModeRef.current = actualFacing;
+          setFacingMode(actualFacing);
+        }
+      }
+
       const video = videoRef.current;
       if (!video) throw new Error("Video element not ready");
       video.srcObject = stream;

@@ -369,21 +369,21 @@ export default function CameraPage() {
           className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all shadow-sm shrink-0 ${cameraActive
             ? "bg-red-50 text-red-600 border border-red-200 hover:bg-red-100/50"
             : "bg-[#0070F3] hover:bg-[#0051B3] text-white"}`}>
-          {cameraActive ? <><X className="w-4 h-4" /><span className="hidden sm:inline">Stop</span></> : <><Camera className="w-4 h-4" /><span className="hidden sm:inline">Start</span></>}
+          {cameraActive ? <><X className="w-4 h-4" /><span>Stop</span></> : <><Camera className="w-4 h-4" /><span>Start</span></>}
         </button>
 
         {/* Upload */}
         <button onClick={() => fileInputRef.current?.click()}
           title="Upload Image"
           className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold bg-slate-50 text-slate-700 border border-slate-200 hover:bg-slate-100 transition-all shadow-sm shrink-0">
-          <Upload className="w-4 h-4" /><span className="hidden sm:inline">Upload</span>
+          <Upload className="w-4 h-4" /><span>Upload</span>
         </button>
 
         {/* Pause/Resume — only when camera is active */}
         {cameraActive && (
           <button onClick={togglePause} title={paused ? "Resume" : "Pause"}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold bg-slate-50 text-slate-700 border border-slate-200 hover:bg-slate-100 transition-all shadow-sm shrink-0">
-            {paused ? <><Play className="w-4 h-4" /><span className="hidden sm:inline">Resume</span></> : <><Pause className="w-4 h-4" /><span className="hidden sm:inline">Pause</span></>}
+            {paused ? <><Play className="w-4 h-4" /><span>Resume</span></> : <><Pause className="w-4 h-4" /><span>Pause</span></>}
           </button>
         )}
 
@@ -391,7 +391,7 @@ export default function CameraPage() {
         {uploadedImage && !cameraActive && (
           <button onClick={() => { setUploadedImage(null); setUploadResult(null); setUploadMode("idle"); }}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-red-50 text-red-600 border border-red-200 hover:bg-red-100/50 transition-all shadow-sm shrink-0">
-            <X className="w-4 h-4" /><span className="hidden sm:inline">Clear</span>
+            <X className="w-4 h-4" /><span>Clear</span>
           </button>
         )}
 
@@ -406,7 +406,7 @@ export default function CameraPage() {
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold bg-slate-50 text-slate-700 border border-slate-200 hover:bg-blue-50 hover:text-[#0070F3] hover:border-blue-200 transition-all shadow-sm shrink-0"
           >
             <RotateCcw className="w-4 h-4" />
-            <span className="hidden sm:inline">
+            <span>
               {facingMode === "environment" ? "Front Cam" : "Back Cam"}
             </span>
           </button>
@@ -424,7 +424,7 @@ export default function CameraPage() {
           }`}
         >
           <Wand2 className="w-4 h-4" />
-          <span className="hidden sm:inline">{wandEnabled ? (wandReady ? "Wand ON" : "Loading…") : "Wand"}</span>
+          <span>{wandEnabled ? (wandReady ? "Wand ON" : "Loading…") : "Wand"}</span>
         </button>
 
         {/* AR Makeover */}
@@ -444,7 +444,7 @@ export default function CameraPage() {
           }`}
         >
           <Zap className="w-4 h-4" />
-          <span className="hidden sm:inline">
+          <span>
             {makeover.isAnalyzing ? "Redesigning…" : makeover.isDone ? "Exit" : "Redesign"}
           </span>
         </button>
@@ -456,7 +456,7 @@ export default function CameraPage() {
             ? "bg-amber-50 text-amber-600 border border-amber-200 animate-pulse"
             : "bg-slate-50 text-slate-500 border border-slate-200 hover:bg-slate-100"}`}>
           <span className="text-sm">⚡</span>
-          <span className="hidden sm:inline">{demoMode ? "Demo ON" : "Demo"}</span>
+          <span>{demoMode ? "Demo ON" : "Demo"}</span>
         </button>
 
         {/* Export */}
@@ -464,7 +464,7 @@ export default function CameraPage() {
           <button onClick={handleExport} title="Export JSON"
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-slate-50 text-slate-700 border border-slate-200 hover:bg-slate-100 transition-all shadow-sm shrink-0">
             <Download className="w-4 h-4" />
-            <span className="hidden sm:inline">Export</span>
+            <span>Export</span>
           </button>
         )}
 

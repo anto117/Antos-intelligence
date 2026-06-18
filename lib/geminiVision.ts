@@ -139,10 +139,9 @@ Box values 0–1000. Respond ONLY with valid JSON.`;
 export async function analyzeFrameWithGemini(base64Jpeg: string, forcedMode?: DetectionMode): Promise<AnalysisResult | null> {
   const promptText = getPromptForMode(forcedMode);
 
-  // No API key → use local pixel-based AI (always works, no network)
+  // No API key → return null so that the hook knows it is offline or needs the trained model
   if (!GEMINI_API_KEY) {
-    const { analyzeWithLocalAI } = await import("./localVisionAI");
-    return analyzeWithLocalAI(base64Jpeg, forcedMode);
+    return null;
   }
 
   // ── OpenRouter Free Vision Models Support ───────────────────
@@ -215,10 +214,9 @@ export async function analyzeFrameWithGemini(base64Jpeg: string, forcedMode?: De
       }
     }
 
-    // All cloud models failed → fall back to local pixel AI
-    console.warn("[OpenRouter] All models failed — using local AI");
-    const { analyzeWithLocalAI } = await import("./localVisionAI");
-    return analyzeWithLocalAI(base64Jpeg, forcedMode);
+    // All cloud models failed → return null so that the hook handles offline/trained model state
+    console.warn("[OpenRouter] All models failed");
+    return null;
   }
 
   // ── Standard Google Gemini API ─────────────────────────────
