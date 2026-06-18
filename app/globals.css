@@ -1,26 +1,362 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
 @import "tailwindcss";
 
+/* ============================================================
+   ANTOS INTELLIGENCE — White & Blue Theme
+   Palette: Bright White · Slate Steel · Corporate Blue
+   ============================================================ */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Core backgrounds */
+  --bg:          #FFFFFF;
+  --bg-surface:  #F8FAFC;
+  --bg-elevated: #F1F5F9;
+
+  /* Brand primaries */
+  --primary:     #0070F3;   /* Corporate Blue */
+  --primary-alt: #0051B3;   /* Deep Blue */
+  --secondary:   #475569;   /* Slate Steel */
+  --accent:      #0EA5E9;   /* Sky Blue */
+  --accent-soft: #E0F2FE;   /* Light Sky Blue */
+
+  /* Grayscale / Typography */
+  --silver:      #94A3B8;
+  --silver-dim:  #64748B;
+  --platinum:    #0F172A;   /* Text Primary */
+
+  /* Text layers */
+  --text:        #0F172A;
+  --text-muted:  #475569;
+  --text-faint:  #94A3B8;
+
+  /* Card and Borders */
+  --card:        #FFFFFF;
+  --card-hover:  #F8FAFC;
+  --border:      #E2E8F0;
+  --border-soft: #F1F5F9;
+
+  /* Shadows */
+  --shadow-sm:   0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.02);
+  --shadow-md:   0 8px 30px rgba(0, 0, 0, 0.06), 0 1px 8px rgba(0, 0, 0, 0.02);
+  --shadow-lg:   0 20px 50px rgba(0, 112, 243, 0.04), 0 1px 12px rgba(0, 0, 0, 0.01);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* ===================== RESET ===================== */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
+  overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', system-ui, sans-serif;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.6;
+}
+
+/* ===================== SCROLLBAR ===================== */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: var(--bg-surface); }
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 112, 243, 0.15);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 112, 243, 0.3);
+}
+
+/* ===================== SELECTION ===================== */
+::selection {
+  background: rgba(0, 112, 243, 0.1);
+  color: var(--primary);
+}
+
+/* ===================== FOCUS ===================== */
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ===================== GLASS SURFACES ===================== */
+.glass {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.glass-heavy {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+
+.glass-dark {
+  background: rgba(248, 250, 252, 0.9);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.surface {
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+}
+
+/* ===================== GRADIENT TEXT ===================== */
+.gradient-text {
+  background: linear-gradient(135deg, #0070F3 0%, #0EA5E9 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-text-silver {
+  background: linear-gradient(135deg, #475569 0%, #94A3B8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-text-crimson {
+  background: linear-gradient(135deg, #0284C7, #0369A1);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ===================== NEON TEXT (repurposed for clean themes) ===================== */
+.neon-cyan   { color: var(--primary); }
+.neon-purple { color: var(--secondary); }
+.neon-green  { color: var(--accent); }
+
+/* ===================== BORDERS ===================== */
+.neon-border-cyan {
+  border: 1px solid rgba(0, 112, 243, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 112, 243, 0.03);
+}
+
+.neon-border-purple {
+  border: 1px solid rgba(71, 85, 105, 0.2);
+  box-shadow: 0 4px 12px rgba(71, 85, 105, 0.03);
+}
+
+/* ===================== BUTTONS ===================== */
+.btn-primary {
+  background: var(--primary);
+  color: #FFFFFF;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.01em;
+  padding: 10px 24px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0, 112, 243, 0.15);
+}
+
+.btn-primary:hover {
+  background: var(--primary-alt);
+  box-shadow: 0 6px 16px rgba(0, 112, 243, 0.25);
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--primary);
+  font-weight: 600;
+  font-size: 14px;
+  padding: 10px 24px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 112, 243, 0.25);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  letter-spacing: 0.01em;
+}
+
+.btn-secondary:hover {
+  background: rgba(0, 112, 243, 0.03);
+  border-color: var(--primary);
+  transform: translateY(-1px);
+}
+
+/* ===================== AI BADGE ===================== */
+.ai-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  background: rgba(0, 112, 243, 0.06);
+  border: 1px solid rgba(0, 112, 243, 0.15);
+  color: var(--primary);
+}
+
+/* ===================== PROGRESS / CONFIDENCE ===================== */
+.progress-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--bg-elevated);
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--primary);
+  transition: width 0.5s ease;
+}
+
+.confidence-bar {
+  height: 5px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--bg-elevated);
+}
+
+.confidence-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 1s ease;
+}
+
+/* ===================== CARD STYLES ===================== */
+.hover-card {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hover-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+  border-color: rgba(0, 112, 243, 0.2);
+}
+
+/* ===================== GRID / DOT PATTERNS ===================== */
+.grid-bg {
+  background-image:
+    linear-gradient(rgba(0, 112, 243, 0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 112, 243, 0.015) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+.dot-pattern {
+  background-image: radial-gradient(circle, rgba(0, 112, 243, 0.04) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* ===================== EFFECTS ===================== */
+.shimmer {
+  background: linear-gradient(90deg, transparent 0%, rgba(0, 112, 243, 0.03) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: shimmer 2.2s linear infinite;
+}
+
+.scan-effect::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--primary), transparent);
+  animation: scanLine 3s linear infinite;
+  z-index: 10;
+}
+
+/* ===================== SCAN BRACKETS ===================== */
+.scan-bracket {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border-color: var(--primary);
+  border-style: solid;
+}
+
+.scan-bracket.tl { top: 0; left: 0; border-width: 2px 0 0 2px; border-radius: 3px 0 0 0; }
+.scan-bracket.tr { top: 0; right: 0; border-width: 2px 2px 0 0; border-radius: 0 3px 0 0; }
+.scan-bracket.bl { bottom: 0; left: 0; border-width: 0 0 2px 2px; border-radius: 0 0 0 3px; }
+.scan-bracket.br { bottom: 0; right: 0; border-width: 0 2px 2px 0; border-radius: 0 0 3px 0; }
+
+/* ===================== AI RING ===================== */
+.ai-ring {
+  border: 2px solid rgba(0, 112, 243, 0.25);
+  border-radius: 50%;
+  animation: pulseGlow 2.5s ease-in-out infinite;
+}
+
+/* ===================== NAV ===================== */
+.nav-active {
+  color: var(--primary);
+  position: relative;
+}
+
+.nav-active::after {
+  content: '';
+  position: absolute;
+  bottom: -4px; left: 0; right: 0;
+  height: 2px;
+  background: var(--primary);
+  border-radius: 1px;
+}
+
+/* ===================== SKELETON ===================== */
+.skeleton {
+  background: linear-gradient(90deg, rgba(0,112,243,0.02) 25%, rgba(0,112,243,0.06) 50%, rgba(0,112,243,0.02) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 6px;
+}
+
+/* ===================== TAG ===================== */
+.tag {
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* ===================== MOBILE OPTIMIZATIONS ===================== */
+@media (max-width: 640px) {
+  .hide-mobile { display: none !important; }
+
+  button, a, [role="button"] {
+    min-height: 40px;
+    min-width: 40px;
+  }
+
+  html { font-size: 14px; }
+}
+
+@media (min-width: 641px) {
+  .show-mobile-only { display: none !important; }
+}
+
+/* Safe area insets for notched phones */
+@supports (padding-top: env(safe-area-inset-top)) {
+  .safe-top    { padding-top: env(safe-area-inset-top); }
+  .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+  .safe-left   { padding-left: env(safe-area-inset-left); }
+  .safe-right  { padding-right: env(safe-area-inset-right); }
 }
