@@ -179,7 +179,32 @@ export default function CameraPage() {
   const [autoStartRoom, setAutoStartRoom] = useState(false);
   const [viewportSize, setViewportSize] = useState({ w: 0, h: 0 });
   const [selectedMode, setSelectedMode] = useState<DetectionMode>("idle");
-  const { videoRef, canvasRef, cameraActive, paused, analyzing, mode, result, error, wsConnected, frameCount, scanProgress, facingMode, startCamera, stopCamera, togglePause, flipCamera } = useAICamera({ wsUrl: WS_URL, captureInterval: 7000, quality: 0.78, forceDemo: demoMode, selectedMode });
+  
+  // Load custom backend WebSocket URL from localStorage if set
+  const [wsUrl, setWsUrl] = useState<string>(
+    typeof window !== "undefined"
+      ? `ws://${window.location.hostname}:8000/ws/analyze/client-demo`
+      : "ws://localhost:8000/ws/analyze/client-demo"
+  );
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const custom = window.localStorage.getItem("custom_ws_url");
+      if (custom) {
+        setWsUrl(custom.trim());
+      } else {
+        setWsUrl(`ws://${window.location.hostname}:8000/ws/analyze/client-${Math.random().toString(36).slice(2, 8)}`);
+      }
+    }
+  }, []);
+
+  const { videoRef, canvasRef, cameraActive, paused, analyzing, mode, result, error, wsConnected, frameCount, scanProgress, facingMode, startCamera, stopCamera, togglePause, flipCamera } = useAICamera({
+    wsUrl,
+    captureInterval: 7000,
+    quality: 0.78,
+    forceDemo: demoMode,
+    selectedMode
+  });
 
   // Makeover hook
   const makeover = useRoomMakeover(

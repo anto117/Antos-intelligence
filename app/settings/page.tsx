@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import {
@@ -92,6 +92,18 @@ export default function SettingsPage() {
   const [quality, setQuality] = useState("75");
   const [autoMode, setAutoMode] = useState(true);
 
+  // Custom key/websocket state
+  const [customGeminiKey, setCustomGeminiKey] = useState("");
+  const [customWsUrl, setCustomWsUrl] = useState("");
+
+  // Load from localStorage on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setCustomGeminiKey(window.localStorage.getItem("custom_gemini_key") ?? "");
+      setCustomWsUrl(window.localStorage.getItem("custom_ws_url") ?? "");
+    }
+  }, []);
+
   // Notifications
   const [notifyScanComplete, setNotifyScanComplete] = useState(true);
   const [notifyWeeklyReport, setNotifyWeeklyReport] = useState(true);
@@ -109,6 +121,19 @@ export default function SettingsPage() {
   const [animations, setAnimations] = useState(true);
 
   const handleSave = () => {
+    if (typeof window !== "undefined") {
+      if (customGeminiKey.trim()) {
+        window.localStorage.setItem("custom_gemini_key", customGeminiKey.trim());
+      } else {
+        window.localStorage.removeItem("custom_gemini_key");
+      }
+
+      if (customWsUrl.trim()) {
+        window.localStorage.setItem("custom_ws_url", customWsUrl.trim());
+      } else {
+        window.localStorage.removeItem("custom_ws_url");
+      }
+    }
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
@@ -374,25 +399,54 @@ export default function SettingsPage() {
               {tab === "env" && (
                 <div>
                   <h2 className="text-base font-bold text-slate-800 mb-2">Environment Configuration</h2>
-                  <p className="text-xs text-slate-500 mb-5">API keys are configured directly in environment variables, not the browser cache.</p>
-                  <div className="space-y-4">
+                  <p className="text-xs text-slate-500 mb-5">Configure your custom Gemini API key or backend WebSocket connection for Vercel/mobile devices.</p>
+                  
+                  <div className="space-y-5">
+                    {/* Custom Gemini Key Input */}
                     <div className="p-4 rounded-lg bg-sky-50 border border-sky-100">
-                      <div className="flex items-center gap-2 text-[#0070F3] text-xs font-semibold mb-2">
-                        <Code2 className="w-3.5 h-3.5" /> frontend/.env.local
+                      <div className="flex items-center justify-between mb-3">
+                        <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <Code2 className="w-4 h-4 text-[#0070F3]" /> Custom Gemini API Key
+                        </label>
+                        <span className="text-[10px] text-slate-400 font-mono">localStorage</span>
                       </div>
-                      <pre className="text-[11px] text-slate-700 font-mono bg-white rounded border border-slate-200 p-3 overflow-x-auto">{`NEXT_PUBLIC_GEMINI_API_KEY=your_key_here`}</pre>
-                      <div className="text-xs text-slate-500 mt-2 space-y-1.5 leading-relaxed">
-                        <p>Open <span className="font-semibold text-slate-700 font-mono">frontend/.env.local</span> and replace <span className="text-[#0070F3] font-mono">your_key_here</span> with your api key:</p>
-                        <ul className="list-disc pl-4 space-y-0.5">
-                          <li>A Google Gemini API key (starts with <span className="font-mono bg-white px-1 border border-slate-100 rounded">AIzaSy</span>)</li>
-                          <li>Or an OpenRouter key (starts with <span className="font-mono bg-white px-1 border border-slate-100 rounded">sk-or-</span>) for free fallbacks.</li>
-                        </ul>
-                      </div>
+                      <input
+                        type="password"
+                        placeholder="Paste your AIzaSy... key (or sk-or-... for OpenRouter)"
+                        value={customGeminiKey}
+                        onChange={(e) => setCustomGeminiKey(e.target.value)}
+                        className="w-full bg-white border border-slate-200 rounded-lg px-3.5 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#0070F3]/50 focus:ring-1 focus:ring-[#0070F3]/30 font-mono"
+                      />
+                      <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">
+                        Supplying a key allows the app to perform cloud AI vision analysis directly from your browser (e.g. on your mobile phone) without needing a local Python backend.
+                      </p>
                     </div>
+
+                    {/* Custom WebSocket URL Input */}
                     <div className="p-4 rounded-lg bg-slate-50 border border-slate-200">
-                      <div className="text-xs font-bold text-slate-700 mb-1">Backend WebSocket URL</div>
-                      <pre className="text-[11px] text-slate-600 font-mono">{`ws://localhost:8000/ws/analyze/<client-id>`}</pre>
-                      <p className="text-[11px] text-slate-500 mt-1.5">Start the Python backend service for local AI analytics.</p>
+                      <div className="flex items-center justify-between mb-3">
+                        <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <Cpu className="w-4 h-4 text-slate-600" /> Custom WebSocket URL
+                        </label>
+                        <span className="text-[10px] text-slate-400 font-mono">localStorage</span>
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="e.g. ws://192.168.1.36:8000/ws/analyze/mobile"
+                        value={customWsUrl}
+                        onChange={(e) => setCustomWsUrl(e.target.value)}
+                        className="w-full bg-white border border-slate-200 rounded-lg px-3.5 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#0070F3]/50 focus:ring-1 focus:ring-[#0070F3]/30 font-mono"
+                      />
+                      <p className="text-[11px] text-slate-500 mt-2 leading-relaxed font-light">
+                        Use this to connect your mobile device to your computer's local backend (e.g. <code className="font-mono bg-white px-1 py-0.5 rounded border">ws://&lt;local-ip-address&gt;:8000/ws/analyze/...</code>). 
+                        If deploying securely on HTTPS (like Vercel), you must use a secure WebSocket tunnel (e.g. <code className="font-mono bg-white px-1 py-0.5 rounded border">wss://...ngrok-free.app/ws/analyze/...</code>) to bypass Mixed Content blocking.
+                      </p>
+                    </div>
+
+                    {/* Default reference */}
+                    <div className="p-4 rounded-lg border border-slate-250 bg-white">
+                      <div className="text-[10px] text-slate-400 uppercase font-mono mb-1.5 font-bold">Standard Env File Reference</div>
+                      <pre className="text-[10px] text-slate-600 font-mono bg-slate-50 rounded p-2 overflow-x-auto">{`NEXT_PUBLIC_GEMINI_API_KEY=your_key_here`}</pre>
                     </div>
                   </div>
                 </div>

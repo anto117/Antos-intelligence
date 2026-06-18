@@ -283,6 +283,15 @@ export function useAICamera({
     }
   }, [captureAndSend, cameraActive, paused, captureInterval]);
 
+  useEffect(() => {
+    if (cameraActive) {
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+      connectWs();
+    }
+  }, [wsUrl, cameraActive, connectWs]);
+
   useEffect(() => () => { stopCamera(); }, [stopCamera]);
 
   return { videoRef, canvasRef, cameraActive, paused, analyzing, mode, result, error, wsConnected, frameCount, scanProgress, facingMode, startCamera, stopCamera, togglePause, flipCamera };

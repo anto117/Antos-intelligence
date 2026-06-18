@@ -6,8 +6,14 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { AnalysisResult, DetectionMode, SingleDetection } from "@/hooks/useAICamera";
 
-// Key comes directly from the env variable — set in .env.local
-const GEMINI_API_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY ?? "";
+// Key is retrieved dynamically from localStorage if present, or env variable fallback
+function getGeminiApiKey(): string {
+  if (typeof window !== "undefined") {
+    const custom = window.localStorage.getItem("custom_gemini_key");
+    if (custom) return custom.trim();
+  }
+  return (process.env.NEXT_PUBLIC_GEMINI_API_KEY ?? "").trim();
+}
 
 
 // Clean prompt without JS-style comments (smaller models get confused by them)
@@ -138,14 +144,15 @@ Box values 0–1000. Respond ONLY with valid JSON.`;
 
 export async function analyzeFrameWithGemini(base64Jpeg: string, forcedMode?: DetectionMode): Promise<AnalysisResult | null> {
   const promptText = getPromptForMode(forcedMode);
+  const apiKey = getGeminiApiKey();
 
   // No API key → return null so that the hook knows it is offline or needs the trained model
-  if (!GEMINI_API_KEY) {
+  if (!apiKey) {
     return null;
   }
 
   // ── OpenRouter Free Vision Models Support ───────────────────
-  if (GEMINI_API_KEY.startsWith("sk-or-")) {
+  if (apiKey.startsWith("sk-or-")) {
     // Confirmed free vision-capable models on OpenRouter (verified June 2026)
     // Ordered by reliability — the cascade tries each until one succeeds
     const MODELS = [
@@ -166,7 +173,7 @@ export async function analyzeFrameWithGemini(base64Jpeg: string, forcedMode?: De
         const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
           method: "POST",
           headers: {
-            "Authorization": `Bearer ${GEMINI_API_KEY}`,
+            "Authorization": `Bearer ${apiKey}`,
             "Content-Type": "application/json",
             "HTTP-Referer": typeof window !== "undefined" ? window.location.origin : "https://localhost:3000",
             "X-Title": "RealityGPT Vision",
@@ -221,7 +228,7 @@ export async function analyzeFrameWithGemini(base64Jpeg: string, forcedMode?: De
 
   // ── Standard Google Gemini API ─────────────────────────────
   try {
-    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+    const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
     const imagePart = { inlineData: { data: base64Jpeg, mimeType: "image/jpeg" as const } };
