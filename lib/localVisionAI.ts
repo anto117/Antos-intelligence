@@ -194,97 +194,208 @@ function classifyScene(s: PixelStats): { type: SceneType; confidence: number } {
 }
 
 // ─── Food Analysis ──────────────────────────────────────────────────────────
+// NOTE: Pixel color CANNOT identify specific brands or packaged products.
+// This engine classifies food by visual type (fresh/cooked/packaged/drink)
+// using real signals — darkness, packaging shape, color zones.
+// It will NEVER fabricate a brand name it cannot see.
 
-const FOOD_DATABASE = [
-  { name:"Coca-Cola / Soda",hueRange:[0,20],   warmMin:0.04, greenMin:0.00, cal:"140 kcal",pro:"0g",carb:"39g",fat:"0g",fib:"0g",sug:"39g",score:3.0 },
-  { name:"Rice & Dal",     hueRange:[20,45],  warmMin:0.10, greenMin:0.00, cal:"~380 kcal",pro:"14g",carb:"68g",fat:"5g",fib:"3g",sug:"2g",score:7.2 },
-  { name:"Salad Bowl",     hueRange:[70,150], warmMin:0.03, greenMin:0.12, cal:"~180 kcal",pro:"6g",carb:"22g",fat:"7g",fib:"8g",sug:"5g",score:9.0 },
-  { name:"Curry & Roti",   hueRange:[15,40],  warmMin:0.15, greenMin:0.02, cal:"~520 kcal",pro:"18g",carb:"72g",fat:"14g",fib:"5g",sug:"4g",score:7.0 },
-  { name:"Fried Rice",     hueRange:[25,55],  warmMin:0.08, greenMin:0.04, cal:"~430 kcal",pro:"12g",carb:"65g",fat:"12g",fib:"2g",sug:"2g",score:6.5 },
-  { name:"Fruit Platter",  hueRange:[0,30],   warmMin:0.12, greenMin:0.05, cal:"~220 kcal",pro:"3g",carb:"52g",fat:"1g",fib:"7g",sug:"40g",score:8.5 },
-  { name:"Vegetables",     hueRange:[60,160], warmMin:0.02, greenMin:0.15, cal:"~150 kcal",pro:"5g",carb:"28g",fat:"2g",fib:"9g",sug:"8g",score:9.2 },
-  { name:"Biryani",        hueRange:[20,50],  warmMin:0.18, greenMin:0.03, cal:"~580 kcal",pro:"22g",carb:"78g",fat:"18g",fib:"3g",sug:"2g",score:6.8 },
-  { name:"Soup / Dal",     hueRange:[15,45],  warmMin:0.06, greenMin:0.01, cal:"~220 kcal",pro:"11g",carb:"34g",fat:"4g",fib:"6g",sug:"3g",score:8.2 },
-  { name:"Sandwich",       hueRange:[20,60],  warmMin:0.08, greenMin:0.06, cal:"~350 kcal",pro:"16g",carb:"44g",fat:"11g",fib:"4g",sug:"5g",score:7.4 },
-  { name:"Dessert / Sweet",hueRange:[10,30],  warmMin:0.05, greenMin:0.00, cal:"~410 kcal",pro:"5g",carb:"72g",fat:"14g",fib:"1g",sug:"60g",score:4.5 },
-];
-
-function analyzeFood(s: PixelStats): SingleDetection[] {
-  const hue = s.dominantHue;
-  const detections: SingleDetection[] = [];
-
-  // Score each food against pixel stats
-  const scored = FOOD_DATABASE.map(f => {
-    const [h0, h1] = f.hueRange;
-    let hueMatch = hue >= h0 && hue <= h1 ? 1 : 0.4;
-
-    // Special heuristic: if we detect a distinct red label signature (at least 0.2% of pixels are red label)
-    if (f.name === "Coca-Cola / Soda" && s.pureRedPixelRatio > 0.002) {
-      hueMatch = 1.0;
-    }
-
-    const warmMatch = s.warmPixelRatio >= f.warmMin ? 1 : s.warmPixelRatio / (f.warmMin + 0.01);
-    const greenMatch = s.greenPixelRatio >= f.greenMin ? 1 : 0.5;
-    
-    let raw = (hueMatch * 40 + warmMatch * 35 + greenMatch * 25);
-
-    // Give a direct boost to Coca-Cola if the red label is present in the camera frame
-    if (f.name === "Coca-Cola / Soda" && s.pureRedPixelRatio > 0.002) {
-      raw += 45;
-    }
-
-    return { ...f, score_pct: Math.round(55 + raw * 0.35) };
-  }).sort((a, b) => b.score_pct - a.score_pct);
-
-  const top = scored[0];
-  detections.push({
-    category: "food",
-    name: top.name,
-    confidence: Math.min(top.score_pct, 89),
-    box: [150, 80, 820, 750],
-    data: {
-      Calories: top.cal, Protein: top.pro,
-      Carbohydrates: top.carb, Fat: top.fat,
-      Fiber: top.fib, Sugar: top.sug,
-    },
-    suggestions: buildFoodSuggestions(top.name, top.score),
-    score: top.score,
-  });
-
-  // Second item if enough warmth/green diversity
-  if (s.warmPixelRatio + s.greenPixelRatio > 0.18 && scored[1]) {
-    const sec = scored[1];
-    detections.push({
-      category: "food",
-      name: sec.name,
-      confidence: Math.min(sec.score_pct - 12, 75),
-      box: [420, 350, 950, 880],
-      data: { Calories: sec.cal, Protein: sec.pro, Carbohydrates: sec.carb, Fat: sec.fat },
-      suggestions: buildFoodSuggestions(sec.name, sec.score),
-      score: sec.score,
-    });
-  }
-
-  return detections;
+interface FoodCategory {
+  name: string;
+  cal: string; pro: string; carb: string; fat: string; fib: string; sug: string;
+  score: number;
+  tips: string[];
 }
 
-function buildFoodSuggestions(name: string, score: number): string[] {
-  const tips: Record<string, string[]> = {
-    "Coca-Cola / Soda": ["High in added sugars — enjoy as an occasional treat","Zero nutritional value — consider sparkling water instead","Keep cold for refreshing taste but drink mindfully"],
-    "Salad Bowl":      ["Excellent choice — packed with micronutrients","Add protein like eggs or chicken for a complete meal","Dress lightly to keep calories low"],
-    "Vegetables":      ["Great source of vitamins and fiber","Steam instead of fry to preserve nutrients","Add healthy fats like olive oil for absorption"],
-    "Fruit Platter":   ["Rich in natural antioxidants","Best consumed in the morning for energy","Pair with nuts for sustained satiety"],
-    "Rice & Dal":      ["Dal is an excellent plant-based protein","Add vegetables to boost fiber intake","Opt for brown rice for more fiber"],
-    "Curry & Roti":    ["Use whole wheat roti for extra fiber","Reduce oil by 50% to cut 120 kcal","Include a salad on the side"],
-    "Biryani":         ["High calorie — portion control recommended","Rich in spices with anti-inflammatory benefits","Pair with raita for probiotics"],
-    "Soup / Dal":      ["Excellent for weight management","High satiety with low calories","Great source of plant-based iron"],
-    "Fried Rice":      ["Reduce oil for a healthier version","Add eggs or tofu for protein boost","Include more vegetables for nutrients"],
-    "Sandwich":        ["Choose whole grain bread for fiber","Add leafy greens to boost nutrition","Watch sodium content in processed meats"],
-    "Dessert / Sweet": ["Enjoy in moderation","Share to reduce portion size","Pair with nuts to slow sugar absorption"],
-  };
-  const base = tips[name] ?? ["Eat mindfully and savor each bite","Stay hydrated — drink water before meals","Balance with vegetables and protein"];
-  const scoreMsg = score >= 8.5 ? "Excellent health score! 🌟" : score >= 7 ? "Good nutritional balance" : "Consider healthier alternatives";
-  return [scoreMsg, ...base];
+// Detect if image looks like a packaged/sealed container (dark bg, high edge density, low green)
+function isPackagedProduct(s: PixelStats): boolean {
+  return (
+    s.darkPixelRatio > 0.25 &&        // dark container/packaging
+    s.greenPixelRatio < 0.04 &&       // not a fresh vegetable
+    s.skinPixelRatio < 0.08 &&        // not a face
+    s.edgeDensity > 0.04              // has edges from labels/text
+  );
+}
+
+function isLikelyCookedMeal(s: PixelStats): boolean {
+  return (
+    s.warmPixelRatio > 0.12 &&
+    s.brightness > 80 &&
+    s.brightness < 200 &&
+    s.greenPixelRatio < 0.08
+  );
+}
+
+function isLikelyVegetableOrSalad(s: PixelStats): boolean {
+  return s.greenPixelRatio > 0.10;
+}
+
+function isLikelyFruits(s: PixelStats): boolean {
+  return (
+    s.warmPixelRatio > 0.10 &&
+    s.brightness > 120 &&
+    s.saturation > 0.3 &&
+    s.greenPixelRatio < 0.06
+  );
+}
+
+function isLikelyDrinkInGlass(s: PixelStats): boolean {
+  return (
+    s.brightness > 150 &&
+    s.colorVariance < 0.03 &&
+    s.edgeDensity < 0.06
+  );
+}
+
+const PACKAGED_SNACK: FoodCategory = {
+  name: "Packaged Snack / Biscuit",
+  cal: "~150–300 kcal/serving", pro: "2–5g", carb: "20–40g", fat: "8–18g", fib: "0–2g", sug: "5–15g",
+  score: 4.0,
+  tips: [
+    "Packaged product detected — check the label for exact nutrition",
+    "Most packaged snacks are high in refined carbs and sodium",
+    "Enjoy as an occasional treat, not a staple",
+    "Add a Gemini API key in Settings → Environment for precise product identification",
+  ]
+};
+
+const PACKAGED_DRINK: FoodCategory = {
+  name: "Packaged Beverage / Can",
+  cal: "~0–150 kcal/serving", pro: "0g", carb: "0–39g", fat: "0g", fib: "0g", sug: "0–39g",
+  score: 3.5,
+  tips: [
+    "Packaged beverage detected — check label for sugar content",
+    "Sweetened drinks add empty calories — prefer water",
+    "Add a Gemini API key in Settings → Environment for exact product info",
+  ]
+};
+
+const COOKED_MEAL_DB: FoodCategory[] = [
+  {
+    name: "Indian Curry & Roti",
+    cal: "~520 kcal", pro: "18g", carb: "72g", fat: "14g", fib: "5g", sug: "4g", score: 7.0,
+    tips: ["Use whole wheat roti for extra fiber", "Reduce oil by 50% to cut 120 kcal", "Include a salad on the side"]
+  },
+  {
+    name: "Biryani / Pulao",
+    cal: "~580 kcal", pro: "22g", carb: "78g", fat: "18g", fib: "3g", sug: "2g", score: 6.8,
+    tips: ["High calorie — portion control recommended", "Rich in spices with anti-inflammatory benefits", "Pair with raita for probiotics"]
+  },
+  {
+    name: "Rice & Dal",
+    cal: "~380 kcal", pro: "14g", carb: "68g", fat: "5g", fib: "3g", sug: "2g", score: 7.2,
+    tips: ["Dal is an excellent plant-based protein", "Add vegetables to boost fiber intake", "Opt for brown rice for more fiber"]
+  },
+  {
+    name: "Soup / Dal",
+    cal: "~220 kcal", pro: "11g", carb: "34g", fat: "4g", fib: "6g", sug: "3g", score: 8.2,
+    tips: ["Excellent for weight management", "High satiety with low calories", "Great source of plant-based iron"]
+  },
+  {
+    name: "Fried Rice / Noodles",
+    cal: "~430 kcal", pro: "12g", carb: "65g", fat: "12g", fib: "2g", sug: "2g", score: 6.5,
+    tips: ["Reduce oil for a healthier version", "Add eggs or tofu for protein boost", "Include more vegetables"]
+  },
+  {
+    name: "Sandwich / Burger",
+    cal: "~350 kcal", pro: "16g", carb: "44g", fat: "11g", fib: "4g", sug: "5g", score: 7.4,
+    tips: ["Choose whole grain bread for fiber", "Add leafy greens to boost nutrition", "Watch sodium in processed meats"]
+  },
+  {
+    name: "Sweet / Dessert",
+    cal: "~410 kcal", pro: "5g", carb: "72g", fat: "14g", fib: "1g", sug: "60g", score: 4.5,
+    tips: ["Enjoy in moderation", "Share to reduce portion size", "Pair with nuts to slow sugar absorption"]
+  },
+];
+
+const VEGETABLES: FoodCategory = {
+  name: "Fresh Vegetables / Salad",
+  cal: "~150–200 kcal", pro: "5–8g", carb: "22–35g", fat: "2–7g", fib: "6–10g", sug: "5–8g",
+  score: 9.0,
+  tips: ["Excellent choice — packed with micronutrients", "Add protein like eggs or paneer for a complete meal", "Dress lightly to keep calories low"]
+};
+
+const FRUITS: FoodCategory = {
+  name: "Fresh Fruits",
+  cal: "~150–280 kcal", pro: "2–4g", carb: "35–65g", fat: "0–1g", fib: "4–8g", sug: "30–55g",
+  score: 8.5,
+  tips: ["Rich in natural antioxidants", "Best consumed in the morning for energy", "Pair with nuts for sustained satiety"]
+};
+
+const DRINK_IN_GLASS: FoodCategory = {
+  name: "Beverage / Drink",
+  cal: "~0–200 kcal", pro: "0–8g", carb: "0–40g", fat: "0g", fib: "0g", sug: "0–35g",
+  score: 5.0,
+  tips: ["Stay hydrated — aim for 8 glasses of water daily", "Choose unsweetened options when possible", "Milk and lassi are good protein sources"]
+};
+
+const GENERIC_FOOD: FoodCategory = {
+  name: "Food Item",
+  cal: "~200–500 kcal", pro: "8–20g", carb: "30–70g", fat: "5–20g", fib: "2–8g", sug: "3–20g",
+  score: 6.5,
+  tips: [
+    "Point closer at the item for better detection",
+    "Add a Gemini API key in Settings → Environment for precise AI analysis",
+    "Eat mindfully and savor each bite",
+  ]
+};
+
+function pickCookedMeal(s: PixelStats): FoodCategory {
+  // Use warmth and brightness to distinguish meal types
+  if (s.greenPixelRatio > 0.04 && s.warmPixelRatio > 0.10) return COOKED_MEAL_DB[0]; // curry
+  if (s.warmPixelRatio > 0.18) return COOKED_MEAL_DB[1]; // biryani
+  if (s.brightness < 110 && s.warmPixelRatio > 0.08) return COOKED_MEAL_DB[2]; // rice dal
+  if (s.colorVariance < 0.04) return COOKED_MEAL_DB[3]; // soup/dal
+  if (s.brightness > 140 && s.saturation > 0.2) return COOKED_MEAL_DB[4]; // fried rice
+  if (s.brightPixelRatio > 0.15) return COOKED_MEAL_DB[5]; // sandwich
+  if (s.warmPixelRatio < 0.06 && s.brightness > 130) return COOKED_MEAL_DB[6]; // sweet
+  return COOKED_MEAL_DB[2]; // default: rice & dal
+}
+
+function analyzeFood(s: PixelStats): SingleDetection[] {
+  let food: FoodCategory;
+
+  if (isLikelyVegetableOrSalad(s)) {
+    food = VEGETABLES;
+  } else if (isLikelyFruits(s)) {
+    food = FRUITS;
+  } else if (isLikelyDrinkInGlass(s)) {
+    food = DRINK_IN_GLASS;
+  } else if (isPackagedProduct(s)) {
+    // Dark container with label — could be any packaged product
+    // Distinguish drink can (cylindrical = more bright top) vs snack box
+    const topRegionBright = s.regionBrightness.slice(0, 3).reduce((a, b) => a + b, 0) / 3;
+    food = topRegionBright > 140 ? PACKAGED_DRINK : PACKAGED_SNACK;
+  } else if (isLikelyCookedMeal(s)) {
+    food = pickCookedMeal(s);
+  } else {
+    food = GENERIC_FOOD;
+  }
+
+  const confidence = Math.min(
+    55 + (s.saturation * 50) + (s.edgeDensity > 0.05 ? 10 : 0),
+    82  // cap at 82% — honest about local AI limitations
+  );
+
+  return [{
+    category: "food",
+    name: food.name,
+    confidence: Math.round(confidence),
+    box: [100, 60, 900, 900],
+    data: {
+      Calories: food.cal, Protein: food.pro,
+      Carbohydrates: food.carb, Fat: food.fat,
+      Fiber: food.fib, Sugar: food.sug,
+    },
+    suggestions: [
+      food.score >= 8.5 ? "Excellent health score! 🌟" : food.score >= 7 ? "Good nutritional balance" : "Consider healthier alternatives",
+      ...food.tips,
+    ],
+    score: food.score,
+  }];
+}
+
+function buildFoodSuggestions(_name: string, _score: number): string[] {
+  return ["Eat mindfully", "Stay hydrated"];
 }
 
 // ─── Emotion Analysis ───────────────────────────────────────────────────────
