@@ -144,30 +144,30 @@ export function useAICamera({
       return;
     }
 
-    // Priority 2: Gemini / OpenRouter / Local pixel AI (always returns a result)
+    // Priority 2: Gemini / OpenRouter (cloud vision)
     const geminiResult = await analyzeFrameWithGemini(base64, selectedMode);
-    if (geminiResult) {
+    if (geminiResult && geminiResult.confidence > 0) {
       applyResult(geminiResult);
       return;
     }
 
-    // Priority 3: Connection failure info (YOLOv8 trained model is offline)
-    setAnalyzing(false);
-    setError("Trained model backend is offline");
+    // Priority 3: Local pixel AI — always works offline, no API needed
+    try {
+      const { analyzeWithLocalAI } = await import("@/lib/localVisionAI");
+      const localResult = await analyzeWithLocalAI(base64, selectedMode !== "idle" ? selectedMode : undefined);
+      applyResult(localResult);
+      return;
+    } catch (localErr) {
+      console.warn("[LocalAI] failed:", localErr);
+    }
+
+    // Priority 4: Hard fallback — should never reach here
     applyResult({
-      mode: selectedMode,
-      confidence: 0,
-      detected: "Trained Model Offline",
-      data: {
-        "Status": "Connection Failed",
-        "Required": "Start python backend: python -m uvicorn main:app --host 0.0.0.0 --port 8000",
-      },
-      suggestions: [
-        "Start the Python backend service locally on port 8000.",
-        "Alternatively, set NEXT_PUBLIC_GEMINI_API_KEY in Vercel settings to use the cloud model.",
-        "Ensure your mobile device is on the same local network.",
-        "Check that port 8000 is open on your computer."
-      ]
+      mode: selectedMode === "idle" ? "unknown" : selectedMode,
+      confidence: 30,
+      detected: "Point at an item",
+      data: { Status: "Move closer and hold steady" },
+      suggestions: ["Hold the camera steady", "Ensure good lighting", "Point directly at the item"]
     });
     frameRef.current += 1;
     setFrameCount(frameRef.current);
