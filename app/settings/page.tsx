@@ -292,7 +292,7 @@ export default function SettingsPage() {
                   <SettingRow label="MediaPipe Face Analysis" description="Facial landmark detection for emotion inference">
                     <Toggle checked={mediapipeEnabled} onChange={setMediapipeEnabled} />
                   </SettingRow>
-                  <SettingRow label="Gemini Pro Vision" description="Natural language analysis and recommendations">
+                  <SettingRow label="TensorFlow MobileNet" description="On-device neural network for food & nutrition analysis">
                     <Toggle checked={geminiEnabled} onChange={setGeminiEnabled} />
                   </SettingRow>
                   <SettingRow label="Auto Mode Detection" description="Automatically detect food, room, or emotion without manual selection">

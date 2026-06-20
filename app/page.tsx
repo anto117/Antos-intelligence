@@ -39,7 +39,7 @@ const suites = [
     borderColor: "rgba(14, 165, 233, 0.2)",
     desc: "Scan any meal to instantly calculate calories, macronutrients, and get personalized dietary recommendations.",
     href: "/camera?mode=food",
-    tag: "Gemini Pro Vision",
+    tag: "TensorFlow MobileNet",
   },
   {
     id: "room",
