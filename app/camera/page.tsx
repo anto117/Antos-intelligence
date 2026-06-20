@@ -2,7 +2,7 @@
 
 import { useRef, useState, useCallback, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Camera, Upload, Pause, Play, X, Wifi, WifiOff, Download, Flame, Zap, Wand2, RotateCcw } from "lucide-react";
+import { Camera, Upload, Pause, Play, X, Wifi, WifiOff, Download, Flame, Zap, Wand2, RotateCcw, Brain, Activity } from "lucide-react";
 import Link from "next/link";
 import { useAICamera, type DetectionMode, type AnalysisResult } from "@/hooks/useAICamera";
 import { useRoomMakeover } from "@/hooks/useRoomMakeover";
@@ -43,93 +43,157 @@ const MODE_LABEL: Record<DetectionMode, string> = {
   wand: "Wand Mode",
 };
 
+// ── Health score ring ──────────────────────────────────────────
+function HealthRing({ score, color }: { score: number; color: string }) {
+  const pct = Math.min((score / 10) * 100, 100);
+  const r = 22; const circ = 2 * Math.PI * r;
+  const dash = (pct / 100) * circ;
+  const ringColor = score >= 8 ? "#10B981" : score >= 6 ? "#F59E0B" : "#EF4444";
+  return (
+    <div className="relative w-14 h-14 flex-shrink-0">
+      <svg width="56" height="56" viewBox="0 0 56 56">
+        <circle cx="28" cy="28" r={r} fill="none" stroke="#e2e8f0" strokeWidth="4" />
+        <motion.circle
+          cx="28" cy="28" r={r} fill="none"
+          stroke={ringColor} strokeWidth="4"
+          strokeLinecap="round"
+          strokeDasharray={circ}
+          initial={{ strokeDashoffset: circ }}
+          animate={{ strokeDashoffset: circ - dash }}
+          transition={{ duration: 1.2, ease: "easeOut" }}
+          transform="rotate(-90 28 28)"
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-sm font-black" style={{ color: ringColor }}>{score.toFixed(1)}</span>
+        <span className="text-[7px] text-slate-400 font-mono leading-none">SCORE</span>
+      </div>
+    </div>
+  );
+}
+
+// ── Macro progress bar ─────────────────────────────────────────
+function MacroBar({ label, value, max, barColor }: { label: string; value: string; max: number; barColor: string }) {
+  const num = parseFloat(value?.replace(/[^0-9.]/g, "") ?? "0") || 0;
+  const pct = Math.min((num / max) * 100, 100);
+  return (
+    <div className="mb-2 last:mb-0">
+      <div className="flex justify-between items-center mb-0.5">
+        <span className="text-[10px] text-slate-500 font-medium">{label}</span>
+        <span className="text-[10px] font-bold" style={{ color: barColor }}>{value}</span>
+      </div>
+      <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
+        <motion.div
+          className="h-full rounded-full"
+          style={{ backgroundColor: barColor }}
+          initial={{ width: 0 }}
+          animate={{ width: `${pct}%` }}
+          transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ── Engine badge ───────────────────────────────────────────────
+function EngineBadge({ source }: { source?: string }) {
+  const s = source ?? "";
+  const isTF = s.toLowerCase().includes("tensor");
+  const isGemini = s.toLowerCase().includes("gemini");
+  const isYolo = s.toLowerCase().includes("yolo") || s.toLowerCase().includes("backend");
+  const label = isTF ? "TensorFlow MobileNet" : isGemini ? "Gemini Vision" : isYolo ? "YOLOv8 Backend" : "Pixel AI";
+  const bg = isTF ? "#FF6F00" : isGemini ? "#1A73E8" : isYolo ? "#7C3AED" : "#64748B";
+  return (
+    <div className="flex items-center gap-1 px-2 py-0.5 rounded-full text-white text-[9px] font-bold font-mono" style={{ background: bg }}>
+      <Brain className="w-2.5 h-2.5" />
+      {label}
+    </div>
+  );
+}
+
+// ── Calorie burn estimator ─────────────────────────────────────
+function burnTime(calStr?: string): string | null {
+  if (!calStr) return null;
+  const n = parseFloat(calStr.replace(/[^0-9.]/g, ""));
+  if (!n || n <= 0) return null;
+  const walk = Math.round(n / 4);    // ~4 kcal/min walking
+  const run  = Math.round(n / 10);   // ~10 kcal/min running
+  return `🚶 ${walk} min walk  ·  🏃 ${run} min run`;
+}
+
 // ── Calorie overlay shown on-screen over the camera feed ──────
 function FoodOverlay({ result, color }: { result: AnalysisResult; color: string }) {
   const calories = result.data["Calories"] as string | undefined;
-  const protein = result.data["Protein"] as string | undefined;
-  const carbs = result.data["Carbohydrates"] as string | undefined;
-  const fat = result.data["Fat"] as string | undefined;
-  const fiber = result.data["Fiber"] as string | undefined;
+  const protein  = result.data["Protein"]  as string | undefined;
+  const carbs    = result.data["Carbohydrates"] as string | undefined;
+  const fat      = result.data["Fat"]      as string | undefined;
+  const fiber    = result.data["Fiber"]    as string | undefined;
+  const sugar    = result.data["Sugar"]    as string | undefined;
+  const score    = result.score ?? 6;
+  const burn     = burnTime(calories);
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.9, y: 20 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.9, y: 20 }}
-      className="absolute bottom-6 left-6 right-6 z-30 pointer-events-none"
+      initial={{ opacity: 0, y: 24 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 24 }}
+      transition={{ type: "spring", stiffness: 300, damping: 28 }}
+      className="absolute bottom-4 left-3 right-3 z-30 pointer-events-none"
     >
-      <div
-        className="rounded-xl p-4 mb-3 bg-white border shadow-md"
-        style={{
-          borderColor: `${color}40`,
-        }}
-      >
-        {/* Food name + confidence */}
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <div className="text-[10px] text-slate-400 font-mono uppercase mb-0.5">Detected Food</div>
-            <div className="text-slate-800 font-bold text-base leading-tight">{result.detected}</div>
+      {/* Main card */}
+      <div className="rounded-2xl bg-white/95 backdrop-blur-sm border shadow-xl overflow-hidden" style={{ borderColor: `${color}30` }}>
+        
+        {/* Header row: name + engine badge + health ring */}
+        <div className="flex items-center gap-3 px-4 pt-3 pb-2 border-b" style={{ borderColor: `${color}15` }}>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-0.5">
+              <EngineBadge source={(result as any).source} />
+            </div>
+            <div className="text-slate-900 font-bold text-sm leading-tight truncate">{result.detected}</div>
+            <div className="text-[10px] text-slate-400 font-mono">{result.confidence.toFixed(0)}% confidence</div>
           </div>
-          <div
-            className="text-right px-3 py-1 rounded-lg border"
-            style={{ background: `${color}05`, borderColor: `${color}20` }}
-          >
-            <div className="text-[10px] text-slate-400 font-mono">Confidence</div>
-            <div className="text-base font-black" style={{ color }}>{result.confidence.toFixed(0)}%</div>
-          </div>
+          <HealthRing score={score} color={color} />
         </div>
 
-        {/* Big calorie number */}
+        {/* Calories + burn row */}
         {calories && (
-          <div
-            className="flex items-center gap-3 p-3 rounded-lg mb-3 border"
-            style={{ background: `${color}05`, borderColor: `${color}15` }}
-          >
-            <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-              style={{ background: `${color}15`, color }}
-            >
-              <Flame className="w-5 h-5" />
+          <div className="flex items-center gap-3 px-4 py-2.5 border-b" style={{ borderColor: `${color}10`, background: `${color}04` }}>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${color}18`, color }}>
+              <Flame className="w-4 h-4" />
             </div>
-            <div>
-              <div className="text-[10px] text-slate-400 font-mono">Total Calories</div>
-              <div className="text-xl font-black" style={{ color }}>{calories}</div>
+            <div className="flex-1">
+              <div className="text-[9px] text-slate-400 font-mono uppercase">Calories per serving</div>
+              <div className="text-lg font-black leading-none" style={{ color }}>{calories}</div>
             </div>
+            {burn && (
+              <div className="text-[9px] text-slate-400 text-right leading-relaxed">
+                {burn.split("·").map((t, i) => <div key={i}>{t.trim()}</div>)}
+              </div>
+            )}
           </div>
         )}
 
-        {/* Macro pills row */}
-        <div className="flex gap-2">
-          {[
-            { label: "Protein", value: protein, color: "#3B82F6" },
-            { label: "Carbs", value: carbs, color: "#F59E0B" },
-            { label: "Fat", value: fat, color: "#EF4444" },
-            { label: "Fiber", value: fiber, color: "#22C55E" },
-          ].map(m => m.value ? (
-            <div
-              key={m.label}
-              className="flex-1 rounded-lg p-2 text-center border bg-slate-50"
-              style={{ borderColor: `${m.color}15` }}
-            >
-              <div className="text-xs font-bold" style={{ color: m.color }}>{m.value}</div>
-              <div className="text-[9px] text-slate-400 mt-0.5 font-mono">{m.label}</div>
-            </div>
-          ) : null)}
+        {/* Macro bars */}
+        <div className="px-4 pt-2.5 pb-3">
+          {protein  && <MacroBar label="Protein"      value={protein}  max={50}  barColor="#3B82F6" />}
+          {carbs    && <MacroBar label="Carbohydrates" value={carbs}   max={100} barColor="#F59E0B" />}
+          {fat      && <MacroBar label="Fat"           value={fat}     max={40}  barColor="#EF4444" />}
+          {fiber    && <MacroBar label="Fiber"         value={fiber}   max={30}  barColor="#22C55E" />}
+          {sugar    && <MacroBar label="Sugar"         value={sugar}   max={50}  barColor="#EC4899" />}
         </div>
       </div>
 
-      {/* Suggestions strip */}
-      {result.suggestions?.[0] && (
+      {/* Tip strip */}
+      {result.suggestions?.[1] && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.3 }}
-          className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs bg-white border shadow-sm text-slate-600"
-          style={{
-            borderColor: `${color}20`,
-          }}
+          transition={{ delay: 0.4 }}
+          className="flex items-start gap-2 px-3 py-2 mt-1.5 rounded-xl text-xs bg-white/90 border shadow-sm text-slate-600"
+          style={{ borderColor: `${color}20` }}
         >
-          <Zap className="w-3.5 h-3.5 flex-shrink-0" style={{ color }} />
-          <span>{result.suggestions[0]}</span>
+          <Activity className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color }} />
+          <span>{result.suggestions[1]}</span>
         </motion.div>
       )}
     </motion.div>

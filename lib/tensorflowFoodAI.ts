@@ -164,9 +164,10 @@ export async function analyzeWithTensorFlow(base64Jpeg: string): Promise<Analysi
       if (entry) {
         const confidence = Math.round(pred.probability * 100);
         return {
-          mode: "food",
+          mode: "food" as const,
           confidence: Math.max(confidence, 55),
           detected: entry.displayName,
+          source: "TensorFlow MobileNet",
           data: {
             Calories: entry.cal,
             Protein: entry.pro,
@@ -181,10 +182,10 @@ export async function analyzeWithTensorFlow(base64Jpeg: string): Promise<Analysi
           ],
           score: entry.score,
           detections: [{
-            category: "food",
+            category: "food" as const,
             name: entry.displayName,
             confidence: Math.max(confidence, 55),
-            box: [80, 60, 920, 920],
+            box: [80, 60, 920, 920] as [number,number,number,number],
             data: { Calories: entry.cal, Protein: entry.pro, Carbohydrates: entry.carb, Fat: entry.fat, Fiber: entry.fib, Sugar: entry.sug },
             suggestions: entry.tips,
             score: entry.score,
@@ -196,9 +197,10 @@ export async function analyzeWithTensorFlow(base64Jpeg: string): Promise<Analysi
     // No food match — return top prediction as generic info
     const top = predictions[0];
     return {
-      mode: "food",
+      mode: "food" as const,
       confidence: 50,
       detected: "Packaged Product",
+      source: "TensorFlow MobileNet",
       data: {
         Detected: top.className,
         Calories: "Check label",

@@ -23,6 +23,7 @@ export interface AnalysisResult {
   suggestions?: string[];
   score?: number;
   disclaimer?: string;
+  source?: string; // e.g. "TensorFlow MobileNet", "Gemini Vision", "YOLOv8 Backend"
   bounding_boxes?: unknown[];
   detections?: SingleDetection[];
 }
