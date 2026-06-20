@@ -151,7 +151,21 @@ export function useAICamera({
       return;
     }
 
-    // Priority 3: Local pixel AI — always works offline, no API needed
+    // Priority 3: TensorFlow.js MobileNet — real neural network, no API key needed
+    if (selectedMode === "food" || selectedMode === "idle") {
+      try {
+        const { analyzeWithTensorFlow } = await import("@/lib/tensorflowFoodAI");
+        const tfResult = await analyzeWithTensorFlow(base64);
+        if (tfResult) {
+          applyResult(tfResult);
+          return;
+        }
+      } catch (tfErr) {
+        console.warn("[TF] failed:", tfErr);
+      }
+    }
+
+    // Priority 4: Pixel-based local AI fallback
     try {
       const { analyzeWithLocalAI } = await import("@/lib/localVisionAI");
       const localResult = await analyzeWithLocalAI(base64, selectedMode !== "idle" ? selectedMode : undefined);
